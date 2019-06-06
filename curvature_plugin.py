@@ -9,6 +9,9 @@ from skimage.filters import threshold_otsu
 from matplotlib import cm
 import time
 
+import tomop
+
+
 # TODO import Hans' code
 # TODO Compute a numerical value for curvature
 # TODO Modify image with "curvature at boundary"
@@ -104,19 +107,33 @@ def CurvatureBoundary(binary_slice, downsamplefactor=4):
     return output
 
 
+pub = tomop.publisher("localhost", 5555, 0)
+
 def callback(shape, xs, idx):
+    print("callback called")
+
     xs = np.array(xs).reshape(shape)
 
-    # blurred_slice = ndimage.median_filter(test_slice, 2)
-    # global_thresh = threshold_otsu(blurred_slice)
-    # binary_slice = blurred_slice > global_thresh #0.3
-    # output = CurvatureBoundary(binary_slice,6)
-    # curvature =   np.array(output['curvature'])
-    # ymesh =   np.array(output['ymesh'])
-    # xmesh =   np.array(output['xmesh'])
-    # maxcurv = np.amax(curvature)
-    # mincurv = np.amin(curvature)
-    # send maxcurv/mincurv as 'tracker' packets
+
+    # need scene_id
+    #trackerp = tomop.tracker_packet(0, "...")
+
+    if np.amax(abs(xs)) != 0.0:
+        blurred_slice = ndimage.median_filter(xs, 2)
+        global_thresh = threshold_otsu(blurred_slice)
+        binary_slice = blurred_slice > global_thresh #0.3
+        output = CurvatureBoundary(binary_slice,6)
+        curvature =   np.array(output['curvature'])
+        ymesh =   np.array(output['ymesh'], dtype=np.int32)
+        xmesh =   np.array(output['xmesh'], dtype=np.int32)
+        maxcurv = np.amax(curvature)
+        mincurv = np.amin(curvature)
+        print(idx, maxcurv, mincurv)
+        # send maxcurv/mincurv as 'tracker' packets
+        print(curvature.shape)
+        m =  np.amax(xs)
+        for i, (x, y) in enumerate(zip(xmesh, ymesh)):
+            xs[x-2:x+3, y-2:y+3] = m * 10.0 * curvature[i]
 
     return [shape, xs.ravel().tolist()]
 
